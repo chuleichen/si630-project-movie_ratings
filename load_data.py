@@ -1,5 +1,6 @@
 import json
 from tqdm import tqdm
+import re 
 
 def load_data(movies_all, set_file_name, data_type):
 
@@ -15,11 +16,16 @@ def load_data(movies_all, set_file_name, data_type):
     # iterate all dialogues
     for dialogue in tqdm(data):
         # copy movie information to the set
+        if dialogue['movieMentions'] == []:
+            continue
         for movie_id in dialogue['movieMentions'].keys():
             if movie_id in movies_now.keys():
                 continue
-            if movies_all[movie_id] != 'failed':
-                movies_now[movie_id] = movies_all[movie_id]
+            try:
+                if movies_all[movie_id] != 'failed':
+                    movies_now[movie_id] = movies_all[movie_id]
+            except:
+                continue
 
         # iterate all messages
         for i in range(len(dialogue['messages'])):
@@ -33,10 +39,14 @@ def load_data(movies_all, set_file_name, data_type):
             # otherwise, include all the messages that do not mention other movies before and after the current message
             words = current_message.split(' ')
             movie_ids = []
+            patterns = '[0-9]+'
             for word in words:
                 if '@' in word:
-                    if movies_now[word[1:]] != 'failed':
-                        movie_ids.append(word[1:])
+                    id_temp = re.search(patterns, word)
+                    if id_temp is None:
+                        continue
+                    if movies_all[id_temp[0]] != 'failed':
+                        movie_ids.append(id_temp[0])
             if len(movie_ids) == 0:
                 continue
 
@@ -71,13 +81,18 @@ def load_data(movies_all, set_file_name, data_type):
                 for id in movie_ids:
                     movies_now[id]['messages']['after'].append(message) 
 
-        # interate message tags
-        for movie_id in dialogue['respondentQuestions'].keys():
+        # iterate message tags
+        questions = 'respondentQuestions'
+        if dialogue[questions] is not dict:
+            questions = 'initiatorQuestions'
+            if dialogue[questions] is not dict:
+                continue
+        for movie_id in dialogue[questions].keys():
             if movies_now[movie_id] == 'failed':
                 continue
-            suggest = dialogue['respondentQuestions'][movie_id]['suggested']
-            seen = dialogue['respondentQuestions'][movie_id]['seen']
-            liked = dialogue['respondentQuestions'][movie_id]['liked']
+            suggest = dialogue[questions][movie_id]['suggested']
+            seen = dialogue[questions][movie_id]['seen']
+            liked = dialogue[questions][movie_id]['liked']
             movies_now[movie_id]['suggested'] += suggest
             movies_now[movie_id]['seen'] += seen
             movies_now[movie_id]['liked'] += liked
