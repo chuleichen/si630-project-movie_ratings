@@ -12,6 +12,8 @@ param_current = 1
 param_before = 1
 param_after = 1
 
+tokens_file_name = 'tokens.txt'
+
 def token_lower(message):
     tokenizer = RegexpTokenizer(r'[a-z]+')
     words = tokenizer.tokenize(message)
@@ -28,7 +30,9 @@ def load_data(movies_all, set_file_name, data_type, matrix_file_name):
     # parsing
     print("Start parsing...")
 
-    tokens_list = []
+    with open(tokens_file_name, 'r') as f:
+        line = f.readline()
+        tokens_list = line.split(' ')
     # iterate all dialogues
     for dialogue in tqdm(data):
         # copy movie information to the set
@@ -142,6 +146,12 @@ def load_data(movies_all, set_file_name, data_type, matrix_file_name):
         dumped_cache = json.dumps(movies_now)
         f.write(dumped_cache)  
 
+    # update tokens
+    with open(tokens_file_name, 'w') as f:
+        for token in tokens_list:
+            f.write(token)
+            f.write(' ')
+
     # Create the matrix
     print()
     print('Creating data matrix')
@@ -206,5 +216,5 @@ cache = cache_file.read()
 movies_all = json.loads(cache)
 cache_file.close()
 
-load_data(movies_all=movies_all, set_file_name=train_set_file_name, data_type='train', matrix_file_name=matrix_train_file_name)
-# load_data(movies_all=movies_all, set_file_name=test_set_file_name, data_type='test', matrix_file_name=matrix_test_file_name)
+# load_data(movies_all=movies_all, set_file_name=train_set_file_name, data_type='train', matrix_file_name=matrix_train_file_name)
+load_data(movies_all=movies_all, set_file_name=test_set_file_name, data_type='test', matrix_file_name=matrix_test_file_name)
