@@ -1,8 +1,23 @@
 import json
 from tqdm import tqdm
 import re 
+from nltk.tokenize import RegexpTokenizer
+from collections import Counter
 
-def load_data(movies_all, set_file_name, data_type):
+stopwords = ["i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself", "yourselves", "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its", "itself", "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom", "this", "that", "these", "those", "am", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "having", "do", "does", "did", "doing", "a", "an", "the", "and", "but", "if", "or", "because", "as", "until", "while", "of", "at", "by", "for", "with", "about", "against", "between", "into", "through", "during", "before", "after", "above", "below", "to", "from", "up", "down", "in", "out", "on", "off", "over", "under", "again", "further", "then", "once", "here", "there", "when", "where", "why", "how", "all", "any", "both", "each", "few", "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", "s", "t", "can", "will", "just", "don", "should", "now"]
+
+genres_dict = {28:0, 12:1, 16:2, 35:3, 80:4, 99:5, 18:6, 10751:7, 14:8, 36:9, 27:10, 10402:11, 9648:12, 10749:13, 878:14, 10770:15, 53:16, 10752:17, 37:18}
+
+param_current = 1
+param_before = 1
+param_after = 1
+
+def token_lower(message):
+    tokenizer = RegexpTokenizer(r'[a-z]+')
+    words = tokenizer.tokenize(message)
+    return words
+
+def load_data(movies_all, set_file_name, data_type, matrix_file_name):
 
     # load data
     data = []
@@ -13,6 +28,7 @@ def load_data(movies_all, set_file_name, data_type):
     # parsing
     print("Start parsing...")
 
+    tokens_list = []
     # iterate all dialogues
     for dialogue in tqdm(data):
         # copy movie information to the set
@@ -49,9 +65,15 @@ def load_data(movies_all, set_file_name, data_type):
                         movie_ids.append(id_temp[0])
             if len(movie_ids) == 0:
                 continue
-
+            
+            tokens = token_lower(current_message.lower())
             for id in movie_ids:
-                    movies_now[id]['messages']['current'].append(current_message) 
+                for token in tokens:
+                    if token in stopwords:
+                        continue 
+                    elif token not in tokens_list:
+                        tokens_list.append(token)
+                    movies_now[id]['messages']['current'].append(token) 
 
             # look for messages before current messages
             current_index = i
@@ -64,8 +86,14 @@ def load_data(movies_all, set_file_name, data_type):
                 else:
                     break
             for message in messages:
+                tokens = token_lower(message.lower())
                 for id in movie_ids:
-                    movies_now[id]['messages']['before'].append(message)
+                    for token in tokens:
+                        if token in stopwords:
+                            continue
+                        elif token not in tokens_list:
+                            tokens_list.append(token)
+                        movies_now[id]['messages']['before'].append(token)
             
             # look for messages after current messages
             messages = []
@@ -78,8 +106,14 @@ def load_data(movies_all, set_file_name, data_type):
                 else:
                     break
             for message in messages:
+                tokens = token_lower(message.lower())
                 for id in movie_ids:
-                    movies_now[id]['messages']['after'].append(message) 
+                    for token in tokens:
+                        if token in stopwords:
+                            continue
+                        elif token not in tokens_list:
+                            tokens_list.append(token)
+                        movies_now[id]['messages']['after'].append(token) 
 
         # iterate message tags
         questions = 'respondentQuestions'
@@ -97,18 +131,80 @@ def load_data(movies_all, set_file_name, data_type):
             movies_now[movie_id]['seen'] += seen
             movies_now[movie_id]['liked'] += liked
 
+    # create Counter
+    for movie in movies_now.keys():
+        messages = movies_now[movie]['messages']
+        messages['current'] = Counter(messages['current'])
+        messages['before'] = Counter(messages['before'])
+        messages['after'] = Counter(messages['after'])
+
     with open(set_file_name,'w') as f:
         dumped_cache = json.dumps(movies_now)
-        f.write(dumped_cache)   
+        f.write(dumped_cache)  
+
+    # Create the matrix
+    print()
+    print('Creating data matrix')
+    data_matrix = []
+    output_popularity = []
+    output_rating = []
+    for movie in tqdm(movies_now.keys()):
+        movie_data = []
+        movie_now = movies_now[movie] 
+        for genre in genres_dict.keys():
+            flag = 0
+            for genre_temp in movie_now['genres']:
+                if genre_temp['id'] == genre:
+                    flag = 1
+                    break
+            if flag == 1:
+                movie_data.append(1)
+            else: movie_data.append(0)
+        movie_data.append(movie_now['num_language'])
+        for token in tokens_list:
+            weight = 0
+            weight += param_current * movie_now['messages']['current'][token]
+            weight += param_before * movie_now['messages']['before'][token]
+            weight += param_after * movie_now['messages']['after'][token]
+            movie_data.append(weight)
+        output_popularity.append(movie_now['populatity'])
+        output_rating.append(movie_now['rating'])
+        data_matrix.append(movie_data)
+    
+    print()
+    print('Writing data')
+    # write the matrix
+    with open(matrix_file_name, 'w') as f:
+        f.write(str(len(data_matrix)))
+        f.write('\n')
+        for line in data_matrix:
+            for num in line:
+                f.write(str(num))
+                f.write(' ')
+            f.write('\n')
+        for num in output_popularity:
+            f.write(str(num))
+            f.write(' ')
+        f.write('\n')
+        for num in output_rating:
+            f.write(str(num))
+            f.write(' ')
+        f.write('\n')
+        for token in tokens_list:
+            f.write(token)
+            f.write(' ')
+        f.write('\n')
 
 movie_cache_file_name = 'movies.json'
 train_set_file_name = 'movies_train.json'
 test_set_file_name = 'movies_test.json'
+matrix_train_file_name = 'matrix_train.txt'
+matrix_test_file_name = 'matrix_test.txt'
 
 cache_file = open(movie_cache_file_name,'r', encoding='utf-8')
 cache = cache_file.read()
 movies_all = json.loads(cache)
 cache_file.close()
 
-load_data(movies_all=movies_all, set_file_name=train_set_file_name, data_type='train')
-load_data(movies_all=movies_all, set_file_name=test_set_file_name, data_type='test')
+load_data(movies_all=movies_all, set_file_name=train_set_file_name, data_type='train', matrix_file_name=matrix_train_file_name)
+# load_data(movies_all=movies_all, set_file_name=test_set_file_name, data_type='test', matrix_file_name=matrix_test_file_name)
