@@ -1,0 +1,86 @@
+from re import A
+import torch
+import torch.nn as nn
+from torch import optim 
+import numpy as np
+from tqdm import tqdm
+import json 
+import sklearn.metrics
+
+threshold = 7
+
+class LogisticRegression(nn.Module):
+    def __init__(self, num_tokens, num_class):
+        super(LogisticRegression,self).__init__()
+        self.linear = nn.Linear(num_tokens, num_class)   
+
+    def forward(self, x):
+        return torch.log_softmax(self.linear(x),dim=1)
+
+# read the data
+print("reading train data")
+with open('matrix_train_data.json','r') as f:
+    data = f.read()
+    data = json.loads(data)
+    train_x = data['data']
+    train_rating_origin = data['rating']
+    train_rating = []
+    for rating in train_rating_origin:
+        if rating > threshold:
+            train_rating.append([1])
+        else:
+            train_rating.append([0])
+    train_pop = data['popularity']
+print('reading test data')
+with open('matrix_test_data.json','r') as f:
+    data = f.read()
+    data = json.loads(data)
+    test_x = data['data']
+    test_rating_origin = data['rating']
+    test_rating = []
+    for rating in test_rating_origin:
+        if rating > threshold:
+            test_rating.append(1)
+        else:
+            test_rating.append(0)
+    test_pop = data['popularity']
+
+# define the model
+logistic_model=LogisticRegression(len(train_x[0]), 2)
+loss_function = nn.NLLLoss()
+optimizer = optim.SGD(logistic_model.parameters(), lr = 0.001)
+
+loss_acc = 0
+
+for epoch in range(100):
+    print("begin epoch", epoch + 1)
+    for movie_num in tqdm(range(6000)):
+
+        logistic_model.zero_grad()
+
+        log_probs = logistic_model(torch.FloatTensor([train_x[movie_num]]))
+
+        loss = loss_function(log_probs, torch.LongTensor(train_rating[movie_num]))
+        loss.backward()
+        optimizer.step()
+        loss_acc += loss.item()
+
+    print("loss after epoch", epoch+1, ":", loss_acc)
+    loss_acc = 0
+
+print('start test')
+test_result = []
+acc = 0
+with torch.no_grad():
+    for movie_num in tqdm(range(1000)):
+        pred_y = logistic_model(torch.FloatTensor([test_x[movie_num]]))
+        if pred_y[0][0] > pred_y[0][1]:
+            result = 0
+        else:
+            result = 1
+        test_result.append(result)
+        if result == test_rating[movie_num]:
+            acc += 1
+f1 = sklearn.metrics.f1_score(test_result, test_rating[0:1000])
+print('F-1 score =', f1)
+print('Accuracy:', acc/1000)

@@ -24,7 +24,7 @@ def compute_gradient(beta, x, y):
 def logistic_regression(x, y, learning_rate, num_step):
     beta = np.zeros(len(x[0]))
     for i in tqdm(range(num_step)):
-        beta += learning_rate * compute_gradient(beta, x[i], y[i])
+        beta -= learning_rate * compute_gradient(beta, x[i], y[i])
         # if i % 500 == 0:
         #     print('log_likelihood_' + str(i), '=',  log_likelihood(x, y, beta))
     return beta 
@@ -39,7 +39,7 @@ def predict(beta, x):
         return 0
 
 # reading train data
-threshold = 5
+threshold = 7
 movie_data = []
 popularity = []
 rating = []
@@ -76,7 +76,11 @@ for num in rating:
 
 x = np.array(movie_data)
 y = np.array(y) 
-beta = logistic_regression(x, y, 0.0001, 1000)
+beta = logistic_regression(x, y, 0.0001, 5000)
+
+print("training data size")
+print(len(x), len(x[0]))
+print(len(y))
 
 print('Reading test data')
 movie_data_test = []
@@ -106,6 +110,8 @@ with open('matrix_test.txt', 'r') as f:
         temp = float(num)
         rating_test.append(temp)
 
+print(len(movie_data_test), len(movie_data_test[0]))
+
 print('Start predicting')
 step = 0
 y_true = []
@@ -127,32 +133,8 @@ for data in tqdm(movie_data_test):
     y_pred.append(temp)
     step += 1
 
+print(beta)
+print(y_pred)
+print(y_true)
 f1 = sklearn.metrics.f1_score(y_true, y_pred)
 print('F1 score =', f1)
-
-'''
-# dev set and calculate F1
-y_true = []
-y_pred = []
-for text in dev:
-    words = tokenize(text[2])
-    count_dict = defaultdict(int)
-    for word in words:
-        if word in count_dict.keys():
-            count_dict[word] += 1
-        else:
-            count_dict[word] = 1
-    temp = []
-    for v in x_dict.keys():
-        temp.append(count_dict[v])
-    classify_result = predict(beta, temp)
-    if text[1] == '1.0':
-        y_true.append(1)
-    else: 
-        y_true.append(0)
-    if classify_result == '1.0':
-        y_pred.append(1)
-    else:
-        y_pred.append(0)
-print(sklearn.metrics.f1_score(y_true, y_pred))
-'''

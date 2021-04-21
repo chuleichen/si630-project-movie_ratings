@@ -32,7 +32,13 @@ def load_data(movies_all, set_file_name, data_type, matrix_file_name):
 
     with open(tokens_file_name, 'r') as f:
         line = f.readline()
-        tokens_list = line.split(' ')
+        tokens_list_temp = line.split(' ')
+
+    tokens_list = []
+    for token in tokens_list_temp:
+        if token not in tokens_list:
+            tokens_list.append(token) 
+
     # iterate all dialogues
     for dialogue in tqdm(data):
         # copy movie information to the set
@@ -119,22 +125,6 @@ def load_data(movies_all, set_file_name, data_type, matrix_file_name):
                             tokens_list.append(token)
                         movies_now[id]['messages']['after'].append(token) 
 
-        # iterate message tags
-        questions = 'respondentQuestions'
-        if dialogue[questions] is not dict:
-            questions = 'initiatorQuestions'
-            if dialogue[questions] is not dict:
-                continue
-        for movie_id in dialogue[questions].keys():
-            if movies_now[movie_id] == 'failed':
-                continue
-            suggest = dialogue[questions][movie_id]['suggested']
-            seen = dialogue[questions][movie_id]['seen']
-            liked = dialogue[questions][movie_id]['liked']
-            movies_now[movie_id]['suggested'] += suggest
-            movies_now[movie_id]['seen'] += seen
-            movies_now[movie_id]['liked'] += liked
-
     # create Counter
     for movie in movies_now.keys():
         messages = movies_now[movie]['messages']
@@ -181,40 +171,32 @@ def load_data(movies_all, set_file_name, data_type, matrix_file_name):
         output_rating.append(movie_now['rating'])
         data_matrix.append(movie_data)
     
+    print('tokens = ', len(tokens_list))
     print()
     print('Writing data')
     # write the matrix
-    with open(matrix_file_name, 'w') as f:
-        f.write(str(len(data_matrix)))
-        f.write('\n')
-        for line in data_matrix:
-            for num in line:
-                f.write(str(num))
-                f.write(' ')
-            f.write('\n')
-        for num in output_popularity:
-            f.write(str(num))
-            f.write(' ')
-        f.write('\n')
-        for num in output_rating:
-            f.write(str(num))
-            f.write(' ')
-        f.write('\n')
-        for token in tokens_list:
-            f.write(token)
-            f.write(' ')
-        f.write('\n')
+    with open(matrix_file_name,'w') as f:
+        matrix = {'data':data_matrix, 'rating':output_rating, 'popularity': output_popularity}
+        matrix_dump = json.dumps(matrix)
+        f.write(matrix_dump)
+
+    print('Loaded', len(data_matrix), 'movies, each movie has', len(data_matrix[0]), 'parameters.')
 
 movie_cache_file_name = 'movies.json'
 train_set_file_name = 'movies_train.json'
 test_set_file_name = 'movies_test.json'
+'''
 matrix_train_file_name = 'matrix_train.txt'
 matrix_test_file_name = 'matrix_test.txt'
+'''
+
+matrix_train_file_name = 'matrix_train_data.json'
+matrix_test_file_name = 'matrix_test_data.json'
 
 cache_file = open(movie_cache_file_name,'r', encoding='utf-8')
 cache = cache_file.read()
 movies_all = json.loads(cache)
 cache_file.close()
 
-# load_data(movies_all=movies_all, set_file_name=train_set_file_name, data_type='train', matrix_file_name=matrix_train_file_name)
-load_data(movies_all=movies_all, set_file_name=test_set_file_name, data_type='test', matrix_file_name=matrix_test_file_name)
+load_data(movies_all=movies_all, set_file_name=train_set_file_name, data_type='train', matrix_file_name=matrix_train_file_name)
+#load_data(movies_all=movies_all, set_file_name=test_set_file_name, data_type='test', matrix_file_name=matrix_test_file_name)
