@@ -3,6 +3,7 @@ from tqdm import tqdm
 import re 
 from nltk.tokenize import RegexpTokenizer
 from collections import Counter
+import argparse
 
 stopwords = ["i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself", "yourselves", "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its", "itself", "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom", "this", "that", "these", "those", "am", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "having", "do", "does", "did", "doing", "a", "an", "the", "and", "but", "if", "or", "because", "as", "until", "while", "of", "at", "by", "for", "with", "about", "against", "between", "into", "through", "during", "before", "after", "above", "below", "to", "from", "up", "down", "in", "out", "on", "off", "over", "under", "again", "further", "then", "once", "here", "there", "when", "where", "why", "how", "all", "any", "both", "each", "few", "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", "s", "t", "can", "will", "just", "don", "should", "now"]
 
@@ -40,7 +41,8 @@ def load_data(movies_all, set_file_name, data_type, matrix_file_name):
             tokens_list.append(token) 
 
     # iterate all dialogues
-    for dialogue in tqdm(data):
+    # for dialogue in tqdm(data):
+    for dialogue in data:
         # copy movie information to the set
         if dialogue['movieMentions'] == []:
             continue
@@ -148,7 +150,9 @@ def load_data(movies_all, set_file_name, data_type, matrix_file_name):
     data_matrix = []
     output_popularity = []
     output_rating = []
-    for movie in tqdm(movies_now.keys()):
+
+    # for movie in tqdm(movies_now.keys()):
+    for movie in movies_now.keys():
         movie_data = []
         movie_now = movies_now[movie] 
         for genre in genres_dict.keys():
@@ -182,13 +186,27 @@ def load_data(movies_all, set_file_name, data_type, matrix_file_name):
 
     print('Loaded', len(data_matrix), 'movies, each movie has', len(data_matrix[0]), 'parameters.')
 
+argparser = argparse.ArgumentParser()
+argparser.add_argument(
+    "--before",
+    type=float,
+    default=1,
+    required=False)
+argparser.add_argument(
+    "--after",
+    type=float,
+    default=1,
+    required=False)
+
+args = argparser.parse_args()
+if args.before:
+    param_before = args.before
+if args.after:
+    param_after = args.after
+
 movie_cache_file_name = 'movies.json'
 train_set_file_name = 'movies_train.json'
 test_set_file_name = 'movies_test.json'
-'''
-matrix_train_file_name = 'matrix_train.txt'
-matrix_test_file_name = 'matrix_test.txt'
-'''
 
 matrix_train_file_name = 'matrix_train_data.json'
 matrix_test_file_name = 'matrix_test_data.json'
@@ -198,5 +216,5 @@ cache = cache_file.read()
 movies_all = json.loads(cache)
 cache_file.close()
 
-load_data(movies_all=movies_all, set_file_name=train_set_file_name, data_type='train', matrix_file_name=matrix_train_file_name)
-#load_data(movies_all=movies_all, set_file_name=test_set_file_name, data_type='test', matrix_file_name=matrix_test_file_name)
+#load_data(movies_all=movies_all, set_file_name=train_set_file_name, data_type='train', matrix_file_name=matrix_train_file_name)
+load_data(movies_all=movies_all, set_file_name=test_set_file_name, data_type='test', matrix_file_name=matrix_test_file_name)
