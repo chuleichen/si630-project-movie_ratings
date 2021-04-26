@@ -197,6 +197,14 @@ argparser.add_argument(
     type=float,
     default=1,
     required=False)
+argparser.add_argument(
+    "--train",
+    action='store_true', 
+    required=False)
+argparser.add_argument(
+    "--test",
+    action='store_true', 
+    required=False)
 
 args = argparser.parse_args()
 if args.before:
@@ -216,5 +224,7 @@ cache = cache_file.read()
 movies_all = json.loads(cache)
 cache_file.close()
 
-#load_data(movies_all=movies_all, set_file_name=train_set_file_name, data_type='train', matrix_file_name=matrix_train_file_name)
-load_data(movies_all=movies_all, set_file_name=test_set_file_name, data_type='test', matrix_file_name=matrix_test_file_name)
+if args.train:
+    load_data(movies_all=movies_all, set_file_name=train_set_file_name, data_type='train', matrix_file_name=matrix_train_file_name)
+else:
+    load_data(movies_all=movies_all, set_file_name=test_set_file_name, data_type='test', matrix_file_name=matrix_test_file_name)
