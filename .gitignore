@@ -6,3 +6,4 @@ matrix_train.txt
 matrix_test_data.json
 matrix_train_data.json
 test.py
+.ipynb_checkpoints
